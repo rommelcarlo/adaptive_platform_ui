@@ -288,11 +288,12 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             items.append(UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil))
         }
 
+        _toolbar.items = items
         // Set toolbar items without animation to prevent icon scaling effect
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        _toolbar.setItems(items, animated: false)
-        CATransaction.commit()
+        // CATransaction.begin()
+        // CATransaction.setDisableActions(true)
+        // _toolbar.setItems(items, animated: false)
+        // CATransaction.commit()
         
         // Setup title label as separate overlay (not part of toolbar items)
         // This avoids the Liquid Glass bubble effect on iOS 26+
