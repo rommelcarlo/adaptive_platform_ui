@@ -32,6 +32,7 @@ class iOS26ToolbarFactory: NSObject, FlutterPlatformViewFactory {
 class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
     private var _containerView: UIView
     private var _toolbar: UIToolbar
+    private var _titleLabel: UILabel? // Separate title label to avoid Liquid Glass effect
     private var _viewId: Int64
     private var _channel: FlutterMethodChannel
 
@@ -51,8 +52,23 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
 
         super.init()
 
+        // Disable implicit animations for the container and toolbar
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        
+        // Clip the container view to prevent shadow/effects from bleeding out
+        // _containerView.clipsToBounds = true
+        // _containerView.layer.masksToBounds = true
+
         // Add toolbar to container
         _containerView.addSubview(_toolbar)
+        
+        // Remove any shadow from toolbar
+        // _toolbar.clipsToBounds = true
+        // _toolbar.layer.masksToBounds = true
+        // _toolbar.layer.shadowOpacity = 0
+        // _toolbar.layer.shadowRadius = 0
+        // _toolbar.layer.shadowOffset = .zero
 
         // Setup constraints for toolbar with SafeArea
         _toolbar.translatesAutoresizingMaskIntoConstraints = false
@@ -70,6 +86,10 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             // Use transparent background with blur (Liquid Glass effect)
             appearance.configureWithTransparentBackground()
             appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.8)
+            
+            // Remove shadow image and line to prevent visual artifacts
+            // appearance.shadowImage = nil
+            // appearance.shadowColor = .clear
 
             // Apply system material blur effect for iOS 26+
             if #available(iOS 26.0, *) {
@@ -85,6 +105,9 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                 _toolbar.compactAppearance = appearance
             }
         }
+        
+        // Remove the default toolbar shadow/separator line
+        _toolbar.setShadowImage(UIImage(), forToolbarPosition: .any)
 
         // Enable blur and translucency
         _toolbar.isTranslucent = true
@@ -93,6 +116,9 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         if let params = args as? [String: Any] {
             configureToolbar(params)
         }
+        
+        // End the CATransaction to commit all changes without animation
+        CATransaction.commit()
 
         // Setup method channel
         _channel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
@@ -110,9 +136,34 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         let hasTitle = params["title"] as? String != nil && !(params["title"] as? String ?? "").isEmpty
         let hasActions = params["actions"] as? [[String: Any]] != nil && !(params["actions"] as? [[String: Any]] ?? []).isEmpty
         let hasLeading = params["leading"] != nil
+        let centerTitle = (params["centerTitle"] as? Bool) ?? true // Default to centered for iOS
+        
+        // Check if Flutter has a custom leading widget overlayed
+        // If so, we need to reserve space for it instead of showing native leading
+        let hasCustomLeadingWidget = (params["hasLeadingWidget"] as? Bool) ?? false
+        let leadingWidgetWidth = (params["leadingWidgetWidth"] as? CGFloat) ?? 44.0
+        
+        // Add space for custom Flutter leading widget if provided
+        if hasCustomLeadingWidget {
+            // Add a fixed space to account for the custom Flutter leading widget
+            if #available(iOS 16.0, *) {
+                items.append(.fixedSpace(leadingWidgetWidth + 8)) // Widget width + padding
+            } else {
+                // For older iOS, use a clear button as spacer
+                let spacer = UIBarButtonItem(
+                    title: "",
+                    style: .plain,
+                    target: nil,
+                    action: nil
+                )
+                spacer.isEnabled = false
+                spacer.width = leadingWidgetWidth + 8
+                items.append(spacer)
+            }
+        }
 
-        // Leading button (left side)
-        if let leadingTitle = params["leading"] as? String {
+        // Leading button (left side) - only if no custom Flutter leading widget
+        if !hasCustomLeadingWidget, let leadingTitle = params["leading"] as? String {
             let leadingButton: UIBarButtonItem
             if leadingTitle.isEmpty {
                 // Empty string = show back chevron icon
@@ -133,6 +184,9 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             }
             items.append(leadingButton)
         }
+        
+        // Adjust hasLeading for layout purposes - true if native leading OR custom widget
+        let effectiveHasLeading = hasLeading || hasCustomLeadingWidget
 
         // Actions - process and split into left/right groups if flexible spacer exists
         if let actions = params["actions"] as? [[String: Any]], !actions.isEmpty {
@@ -192,21 +246,9 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
 
                 items.append(UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil))
 
-                // Add title in center if exists
+                // Note: Title is rendered as a separate UILabel overlay to avoid Liquid Glass effect
+                // Just add flexible space here for layout (title will be centered)
                 if hasTitle {
-                    if let title = params["title"] as? String, !title.isEmpty {
-                        let titleLabel = UILabel()
-                        titleLabel.text = title
-                        titleLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
-                        titleLabel.textAlignment = .center
-
-                        let titleSize = (title as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 17, weight: .semibold)])
-                        titleLabel.frame = CGRect(x: 0, y: 0, width: max(titleSize.width, 200), height: 44)
-
-                        let titleItem = UIBarButtonItem(customView: titleLabel)
-                        items.append(titleItem)
-                    }
-
                     items.append(UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil))
                 }
 
@@ -215,24 +257,14 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             } else {
                 // No flexible spacer - standard layout: Title on left, actions on right
                 // Add spacing after leading button if it exists and there's a title
-                if hasLeading && hasTitle {
+                if effectiveHasLeading && hasTitle && !hasCustomLeadingWidget {
                     if #available(iOS 16.0, *) {
                         items.append(.fixedSpace(8))
                     }
                 }
 
-                if hasTitle {
-                    if let title = params["title"] as? String, !title.isEmpty {
-                        let titleLabel = UILabel()
-                        titleLabel.text = title
-                        titleLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
-                        titleLabel.textAlignment = .left
-                        titleLabel.sizeToFit()
-
-                        let titleItem = UIBarButtonItem(customView: titleLabel)
-                        items.append(titleItem)
-                    }
-                }
+                // Note: Title is rendered as a separate UILabel overlay to avoid Liquid Glass effect
+                // No UIBarButtonItem needed for title here
 
                 // Always add flexible space to push actions to the right
                 items.append(UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil))
@@ -243,31 +275,72 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         } else {
             // No actions
             // Add spacing after leading button if it exists and there's a title
-            if hasLeading && hasTitle {
+            if effectiveHasLeading && hasTitle && !hasCustomLeadingWidget {
                 if #available(iOS 16.0, *) {
                     items.append(.fixedSpace(8))
                 }
             }
 
-            // Add title if exists
-            if hasTitle {
-                if let title = params["title"] as? String, !title.isEmpty {
-                    let titleLabel = UILabel()
-                    titleLabel.text = title
-                    titleLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
-                    titleLabel.textAlignment = .left
-                    titleLabel.sizeToFit()
-
-                    let titleItem = UIBarButtonItem(customView: titleLabel)
-                    items.append(titleItem)
-                }
-            }
+            // Note: Title is rendered as a separate UILabel overlay to avoid Liquid Glass effect
+            // No UIBarButtonItem needed for title here
 
             // Always add flexible space to push everything to the left
             items.append(UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil))
         }
 
-        _toolbar.items = items
+        // Set toolbar items without animation to prevent icon scaling effect
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        _toolbar.setItems(items, animated: false)
+        CATransaction.commit()
+        
+        // Setup title label as separate overlay (not part of toolbar items)
+        // This avoids the Liquid Glass bubble effect on iOS 26+
+        _titleLabel?.removeFromSuperview()
+        _titleLabel = nil
+        
+        if hasTitle, let title = params["title"] as? String, !title.isEmpty {
+            let titleLabel = UILabel()
+            titleLabel.text = title
+            titleLabel.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+            
+            // Use isDarkMode passed from Flutter to set the correct text color
+            let isDarkMode = (params["isDarkMode"] as? Bool) ?? false
+            titleLabel.textColor = isDarkMode ? UIColor.white : UIColor.black
+            
+            titleLabel.isUserInteractionEnabled = false
+            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+            
+            _containerView.addSubview(titleLabel)
+            _titleLabel = titleLabel
+            
+            if centerTitle {
+                // Center the title horizontally in the toolbar
+                NSLayoutConstraint.activate([
+                    titleLabel.centerXAnchor.constraint(equalTo: _containerView.centerXAnchor),
+                    titleLabel.centerYAnchor.constraint(equalTo: _toolbar.centerYAnchor)
+                ])
+            } else {
+                // Left-aligned title (positioned after leading button/widget)
+                // Calculate leading offset based on whether there's a leading button or custom widget
+                let hasCustomLeadingWidget = (params["hasLeadingWidget"] as? Bool) ?? false
+                let leadingWidgetWidth = (params["leadingWidgetWidth"] as? CGFloat) ?? 44.0
+                let hasNativeLeading = params["leading"] != nil
+                
+                // Determine left offset for title
+                var leftOffset: CGFloat = 16 // Default padding
+                if hasCustomLeadingWidget {
+                    leftOffset = leadingWidgetWidth + 16 // Widget width + padding
+                } else if hasNativeLeading {
+                    leftOffset = 52 // Back button width + padding
+                }
+                
+                NSLayoutConstraint.activate([
+                    titleLabel.leadingAnchor.constraint(equalTo: _containerView.leadingAnchor, constant: leftOffset),
+                    titleLabel.centerYAnchor.constraint(equalTo: _toolbar.centerYAnchor)
+                ])
+            }
+        }
     }
 
     @objc private func leadingTapped() {

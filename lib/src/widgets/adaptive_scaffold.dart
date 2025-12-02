@@ -1,6 +1,7 @@
 import 'package:adaptive_platform_ui/src/widgets/ios26/ios26_native_tab_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../platform/platform_info.dart';
 import '../style/sf_symbol.dart';
 import 'adaptive_app_bar.dart';
@@ -107,6 +108,29 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     final useNativeBottomBar =
         widget.bottomNavigationBar?.useNativeBottomBar ?? true;
 
+    // Determine status bar style based on theme brightness
+    final isDarkMode = Theme.brightnessOf(context) == Brightness.dark;
+    final statusBarStyle = isDarkMode
+        ? SystemUiOverlayStyle.light.copyWith(
+            statusBarBrightness: Brightness.dark,
+            statusBarIconBrightness: Brightness.light,
+          )
+        : SystemUiOverlayStyle.dark.copyWith(
+            statusBarBrightness: Brightness.light,
+            statusBarIconBrightness: Brightness.dark,
+          );
+
+    // Helper to wrap content with AnnotatedRegion for iOS status bar styling
+    Widget wrapWithStatusBarStyle(Widget child) {
+      if (PlatformInfo.isIOS) {
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: statusBarStyle,
+          child: child,
+        );
+      }
+      return child;
+    }
+
     // iOS 26+ with native toolbar enabled - Use IOS26Scaffold
     if (PlatformInfo.isIOS26OrHigher() && useNativeToolbar) {
       // For GoRouter compatibility: Use body directly if it's StatefulNavigationShell
@@ -153,17 +177,20 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         }).toList();
       }
 
-      return IOS26Scaffold(
-        key: ValueKey(
-          'ios26_scaffold_${widget.bottomNavigationBar?.selectedIndex ?? 0}_${widget.body?.runtimeType.toString() ?? "empty"}',
+      return wrapWithStatusBarStyle(
+        IOS26Scaffold(
+          key: ValueKey(
+            'ios26_scaffold_${widget.bottomNavigationBar?.selectedIndex ?? 0}_${widget.body?.runtimeType.toString() ?? "empty"}',
+          ),
+          bottomNavigationBar: widget.bottomNavigationBar,
+          title: widget.appBar?.title,
+          actions: widget.appBar?.actions,
+          leading: widget.appBar?.leading,
+          centerTitle: widget.appBar?.centerTitle,
+          minimizeBehavior: widget.minimizeBehavior,
+          enableBlur: widget.enableBlur,
+          children: childrenList,
         ),
-        bottomNavigationBar: widget.bottomNavigationBar,
-        title: widget.appBar?.title,
-        actions: widget.appBar?.actions,
-        leading: widget.appBar?.leading,
-        minimizeBehavior: widget.minimizeBehavior,
-        enableBlur: widget.enableBlur,
-        children: childrenList,
       );
     }
 
@@ -328,6 +355,10 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           }
         }
 
+        // Get keyboard/resize behavior for iOS 26+ tab bar positioning
+        final resizeToAvoidBottomInset =
+            widget.bottomNavigationBar?.resizeToAvoidBottomInset ?? false;
+
         // Wrap body with Stack if floatingActionButton is provided
         Widget bodyWidget = Column(
           children: [
@@ -349,6 +380,8 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                           Positioned(
                             left: 0,
                             right: 0,
+                            // Keep tab bar at physical bottom of screen
+                            // regardless of keyboard state
                             bottom: 0,
                             child: tabBar!,
                           ),
@@ -391,9 +424,35 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           child: bodyWidget,
         );
 
-        return CupertinoPageScaffold(
-          navigationBar: navigationBar,
-          child: bodyWidget,
+        // For iOS 26+ with native tab bar: Use Scaffold with resizeToAvoidBottomInset control
+        // This prevents the tab bar from moving up when keyboard appears
+        if (PlatformInfo.isIOS26OrHigher() && useNativeBottomBar) {
+          return wrapWithStatusBarStyle(
+            Scaffold(
+              backgroundColor: CupertinoColors.systemBackground.resolveFrom(
+                context,
+              ),
+              resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+              appBar: navigationBar != null
+                  ? PreferredSize(
+                      preferredSize: const Size.fromHeight(44),
+                      child: navigationBar,
+                    )
+                  : null,
+              body: SafeArea(
+                top: navigationBar == null,
+                bottom: false, // Tab bar handles bottom safe area
+                child: bodyWidget,
+              ),
+            ),
+          );
+        }
+
+        return wrapWithStatusBarStyle(
+          CupertinoPageScaffold(
+            navigationBar: navigationBar,
+            child: bodyWidget,
+          ),
         );
       }
 
@@ -477,7 +536,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       );
 
       // Always use CupertinoPageScaffold to ensure proper background color
-      return CupertinoPageScaffold(navigationBar: navigationBar, child: body);
+      return wrapWithStatusBarStyle(
+        CupertinoPageScaffold(navigationBar: navigationBar, child: body),
+      );
     }
 
     // Android - Use NavigationBar if destinations provided

@@ -21,6 +21,7 @@ class AdaptiveAppBar {
     this.actions,
     this.leading,
     this.useNativeToolbar = true,
+    this.centerTitle,
     this.cupertinoNavigationBar,
     this.appBar,
   });
@@ -48,6 +49,17 @@ class AdaptiveAppBar {
   /// If true, [cupertinoNavigationBar] will be ignored and native toolbar will be shown.
   final bool useNativeToolbar;
 
+  /// Whether to center the title in the app bar
+  ///
+  /// - iOS 26+ with native toolbar: Title will be centered between leading and actions
+  /// - iOS < 26: CupertinoNavigationBar always centers title by default
+  /// - Android: Material AppBar respects this setting
+  ///
+  /// If null, defaults to platform-specific behavior:
+  /// - iOS: true (centered by default)
+  /// - Android: false (left-aligned by default)
+  final bool? centerTitle;
+
   /// Custom CupertinoNavigationBar for iOS
   ///
   /// When provided and [useNativeToolbar] is false, this custom navigation bar will be used
@@ -70,6 +82,7 @@ class AdaptiveAppBar {
     List<AdaptiveAppBarAction>? actions,
     Widget? leading,
     bool? useNativeToolbar,
+    bool? centerTitle,
     PreferredSizeWidget? cupertinoNavigationBar,
     PreferredSizeWidget? appBar,
   }) {
@@ -78,6 +91,7 @@ class AdaptiveAppBar {
       actions: actions ?? this.actions,
       leading: leading ?? this.leading,
       useNativeToolbar: useNativeToolbar ?? this.useNativeToolbar,
+      centerTitle: centerTitle ?? this.centerTitle,
       cupertinoNavigationBar:
           cupertinoNavigationBar ?? this.cupertinoNavigationBar,
       appBar: appBar ?? this.appBar,

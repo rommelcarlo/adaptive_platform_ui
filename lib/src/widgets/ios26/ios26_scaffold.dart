@@ -13,6 +13,7 @@ class IOS26Scaffold extends StatefulWidget {
     this.title,
     this.actions,
     this.leading,
+    this.centerTitle,
     this.minimizeBehavior = TabBarMinimizeBehavior.automatic,
     this.enableBlur = true,
     required this.children,
@@ -22,6 +23,7 @@ class IOS26Scaffold extends StatefulWidget {
   final String? title;
   final List<AdaptiveAppBarAction>? actions;
   final Widget? leading;
+  final bool? centerTitle;
   final TabBarMinimizeBehavior minimizeBehavior;
   final bool enableBlur;
   final List<Widget> children;
@@ -160,6 +162,8 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
               leading: widget.leading, // Custom leading widget has priority
               leadingText: leadingText,
               actions: widget.actions,
+              centerTitle:
+                  widget.centerTitle ?? true, // Default to centered for iOS
               onLeadingTap: leadingCallback,
               onActionTap: (index) {
                 // Call the appropriate action callback

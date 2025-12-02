@@ -15,6 +15,7 @@ class IOS26NativeToolbar extends StatefulWidget {
     this.leading,
     this.leadingText,
     this.actions,
+    this.centerTitle = true,
     this.onLeadingTap,
     this.onActionTap,
     this.height = 44.0,
@@ -24,6 +25,7 @@ class IOS26NativeToolbar extends StatefulWidget {
   final Widget? leading;
   final String? leadingText;
   final List<AdaptiveAppBarAction>? actions;
+  final bool centerTitle;
   final VoidCallback? onLeadingTap;
   final ValueChanged<int>? onActionTap;
   final double height;
@@ -46,10 +48,17 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
 
     // Priority: custom leading widget > leadingText
     // If custom leading widget provided, don't send leadingText to native
+    // but tell native to reserve space for the Flutter widget overlay
+    final isDarkMode = Theme.brightnessOf(context) == Brightness.dark;
     final creationParams = <String, dynamic>{
       if (widget.title != null) 'title': widget.title!,
       if (widget.leading == null && widget.leadingText != null)
         'leading': widget.leadingText!,
+      if (widget.leading != null) 'hasLeadingWidget': true,
+      if (widget.leading != null)
+        'leadingWidgetWidth': 44.0, // Default width for leading widget
+      'centerTitle': widget.centerTitle,
+      'isDarkMode': isDarkMode,
       if (widget.actions != null && widget.actions!.isNotEmpty)
         'actions': widget.actions!
             .map((action) => action.toNativeMap())
@@ -79,6 +88,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
               ),
       ),
       child: UiKitView(
+        key: ValueKey('ios26_toolbar_${isDarkMode ? 'dark' : 'light'}'),
         viewType: 'adaptive_platform_ui/ios26_toolbar',
         creationParams: creationParams,
         creationParamsCodec: const StandardMessageCodec(),
@@ -156,7 +166,9 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
       child: Row(
         children: [
           if (widget.leading != null) widget.leading!,
-          const Spacer(),
+          if (widget.centerTitle) const Spacer(),
+          if (!widget.centerTitle && widget.leading != null)
+            const SizedBox(width: 8),
           if (widget.title != null)
             Text(
               widget.title!,

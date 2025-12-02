@@ -25,6 +25,7 @@ class AdaptiveBottomNavigationBar {
     this.bottomNavigationBar,
     this.selectedItemColor,
     this.unselectedItemColor,
+    this.resizeToAvoidBottomInset = false,
   });
 
   /// Navigation items for bottom navigation bar
@@ -88,6 +89,18 @@ class AdaptiveBottomNavigationBar {
   /// If null, uses platform defaults.
   final Color? unselectedItemColor;
 
+  /// Whether the bottom navigation bar should move up when the keyboard appears.
+  ///
+  /// When false (default for iOS 26+): The tab bar stays at the bottom of the screen,
+  /// even when the keyboard is shown. This matches native iOS 26 behavior.
+  ///
+  /// When true: The tab bar will move up with the keyboard, similar to traditional
+  /// Flutter behavior.
+  ///
+  /// Note: This only affects iOS 26+ native tab bar. For other platforms,
+  /// the behavior is controlled by the scaffold's resizeToAvoidBottomInset property.
+  final bool resizeToAvoidBottomInset;
+
   /// Creates a copy of this bottom navigation bar with the given fields replaced
   AdaptiveBottomNavigationBar copyWith({
     List<AdaptiveNavigationDestination>? items,
@@ -98,6 +111,7 @@ class AdaptiveBottomNavigationBar {
     Widget? bottomNavigationBar,
     Color? selectedItemColor,
     Color? unselectedItemColor,
+    bool? resizeToAvoidBottomInset,
   }) {
     return AdaptiveBottomNavigationBar(
       items: items ?? this.items,
@@ -108,6 +122,7 @@ class AdaptiveBottomNavigationBar {
       bottomNavigationBar: bottomNavigationBar ?? this.bottomNavigationBar,
       selectedItemColor: selectedItemColor ?? this.selectedItemColor,
       unselectedItemColor: unselectedItemColor ?? this.unselectedItemColor,
+      resizeToAvoidBottomInset: resizeToAvoidBottomInset ?? this.resizeToAvoidBottomInset,
     );
   }
 }
