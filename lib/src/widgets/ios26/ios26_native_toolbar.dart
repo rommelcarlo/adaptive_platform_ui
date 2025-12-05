@@ -18,7 +18,9 @@ class IOS26NativeToolbar extends StatefulWidget {
     this.centerTitle = true,
     this.onLeadingTap,
     this.onActionTap,
-    this.height = 44.0,
+    // Increased from 44 to 50 to accommodate iOS 26 Liquid Glass circular button effects
+    // The extra 6pt provides padding so the glass bubbles don't get clipped
+    this.height = 50.0,
   });
 
   final String? title;

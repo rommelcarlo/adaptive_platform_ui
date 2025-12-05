@@ -56,27 +56,22 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         
-        // Clip the container view to prevent shadow/effects from bleeding out
+        // Clip the container view to prevent Liquid Glass effects from bleeding out
+        // This retains the Liquid Glass effect within the toolbar bounds
         // _containerView.clipsToBounds = true
         // _containerView.layer.masksToBounds = true
 
         // Add toolbar to container
         _containerView.addSubview(_toolbar)
-        
-        // Remove any shadow from toolbar
-        // _toolbar.clipsToBounds = true
-        // _toolbar.layer.masksToBounds = true
-        // _toolbar.layer.shadowOpacity = 0
-        // _toolbar.layer.shadowRadius = 0
-        // _toolbar.layer.shadowOffset = .zero
 
         // Setup constraints for toolbar with SafeArea
+        // Add small padding to prevent Liquid Glass button effects from being clipped
         _toolbar.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            _toolbar.topAnchor.constraint(equalTo: _containerView.safeAreaLayoutGuide.topAnchor),
+            _toolbar.topAnchor.constraint(equalTo: _containerView.safeAreaLayoutGuide.topAnchor, constant: 3),
             _toolbar.leadingAnchor.constraint(equalTo: _containerView.leadingAnchor),
             _toolbar.trailingAnchor.constraint(equalTo: _containerView.trailingAnchor),
-            _toolbar.bottomAnchor.constraint(equalTo: _containerView.bottomAnchor)
+            _toolbar.bottomAnchor.constraint(equalTo: _containerView.bottomAnchor, constant: -3)
         ])
 
         // iOS 26+ Liquid Glass appearance with blur effect
@@ -86,10 +81,6 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             // Use transparent background with blur (Liquid Glass effect)
             appearance.configureWithTransparentBackground()
             appearance.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.8)
-            
-            // Remove shadow image and line to prevent visual artifacts
-            // appearance.shadowImage = nil
-            // appearance.shadowColor = .clear
 
             // Apply system material blur effect for iOS 26+
             if #available(iOS 26.0, *) {
