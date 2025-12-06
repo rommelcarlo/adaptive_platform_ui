@@ -197,13 +197,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     // iOS <26 (iOS 18 and below) OR iOS 26+ with useNativeToolbar: false
     // Use CupertinoPageScaffold with CupertinoTabBar if destinations provided
     if (PlatformInfo.isIOS) {
-      // Auto back button for iOS 26+ when useNativeToolbar is false
+      // Auto back button for all iOS versions when no custom leading is provided
       Widget? effectiveLeading = widget.appBar?.leading;
-      if (PlatformInfo.isIOS26OrHigher() &&
-          !useNativeToolbar &&
-          widget.appBar?.leading == null &&
-          (widget.bottomNavigationBar?.items == null ||
-              widget.bottomNavigationBar!.items!.isEmpty)) {
+      if (widget.appBar?.leading == null) {
         // Check if we can pop AND this is the current route (to prevent showing on previous page during transition)
         final canPop = Navigator.maybeOf(context)?.canPop() ?? false;
         final isCurrent = ModalRoute.of(context)?.isCurrent ?? true;
@@ -243,9 +239,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                     widget.appBar!.actions!.isNotEmpty) ||
                 effectiveLeading != null)) {
           navigationBar = CupertinoNavigationBar(
-            automaticallyImplyLeading: PlatformInfo.isIOS26OrHigher()
-                ? false
-                : true, // Let CupertinoNavigationBar handle back button for iOS < 26
+            automaticallyImplyLeading: false, // Always use custom leading for consistent back button
             middle: widget.appBar!.title != null
                 ? Text(widget.appBar!.title!)
                 : null,
@@ -912,10 +906,16 @@ class _AnimatedBackButtonState extends State<_AnimatedBackButton>
       child: SizedBox(
         height: 38,
         width: 38,
-        child: AdaptiveButton.sfSymbol(
-          onPressed: _handlePressed,
-          sfSymbol: SFSymbol("chevron.left", size: 20),
-        ),
+        child: PlatformInfo.isIOS26OrHigher()
+            ? AdaptiveButton.sfSymbol(
+                onPressed: _handlePressed,
+                sfSymbol: SFSymbol("chevron.left", size: 20),
+              )
+            : CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _handlePressed,
+                child: const Icon(CupertinoIcons.chevron_back, size: 24),
+              ),
       ),
     );
   }
